@@ -28,4 +28,86 @@ Aspectos (Opcional)
 Puedes anadir logs de info, warning y error en las llamadas, para un mejor control
 
 Diseño por Contrato (Opcional):
-Puedes anadir validaciones en precondiciones o postcondiciones como lo veas necesario*/
+Puedes anadir validaciones en precondiciones o postcondiciones como lo veas necesario
+*/
+
+interface Book {
+    title: string;
+    author: string;
+    ISBN: string;
+}
+
+interface LoanManager {
+    loanBook(ISBN: string, userID: string): void;
+    returnBook(ISBN: string, userID: string): void;
+}
+
+interface EmailNotifier {
+    sendEmail(userID: string, message: string): void;
+}
+
+class LibraryManager implements LoanManager {
+    private books: Book[] = [];
+    private loans: any[] = [];
+    private emailNotifier: EmailNotifier;
+
+    constructor(emailNotifier: EmailNotifier) {
+        this.emailNotifier = emailNotifier;
+    }
+
+    addBook(title: string, author: string, ISBN: string) {
+        this.books.push({ title, author, ISBN });
+    }
+
+    removeBook(ISBN: string) {
+        const index = this.books.findIndex(b => b.ISBN === ISBN);
+        if (index !== -1) {
+            this.books.splice(index, 1);
+        }
+    }
+
+    searchByTitle(query: string): Book[] {
+        return this.books.filter(book => book.title.includes(query));
+    }
+
+    searchByAuthor(query: string): Book[] {
+        return this.books.filter(book => book.author.includes(query));
+    }
+
+    searchByISBN(query: string): Book[] {
+        return this.books.filter(book => book.ISBN === query);
+    }
+
+    loanBook(ISBN: string, userID: string) {
+        const book = this.books.find(b => b.ISBN === ISBN);
+        if (book) {
+            this.loans.push({ ISBN, userID, date: new Date() });
+            this.emailNotifier.sendEmail(userID, `Has solicitado el libro ${book.title}`);
+        }
+    }
+
+    returnBook(ISBN: string, userID: string) {
+        const index = this.loans.findIndex(loan => loan.ISBN === ISBN && loan.userID === userID);
+        if (index !== -1) {
+            this.loans.splice(index, 1);
+            this.emailNotifier.sendEmail(userID, `Has devuelto el libro con ISBN ${ISBN}. ¡Gracias!`);
+        }
+    }
+}
+
+
+class EmailNotifierI implements EmailNotifier {
+    sendEmail(userID: string, message: string) {
+        console.log(`Enviando email a ${userID}: ${message}`);
+    }
+}
+const emailNotifier = new EmailNotifierI();
+const library = new LibraryManager(emailNotifier);
+
+library.addBook("El Gran Gatsby", "F. Scott Fitzgerald", "123456789");
+library.addBook("1984", "George Orwell", "987654321");
+library.loanBook("123456789", "user01");
+
+const booksByTitle = library.searchByTitle("Gatsby");// busqueda por Libro
+const booksByAuthor = library.searchByAuthor("F. Scott Fitzgerald");// busqueda por autor
+const booksByISBN = library.searchByISBN("123456789");// busqueda por ISBN
